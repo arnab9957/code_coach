@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodeMentor AI</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>CodeMentor AI</h1>
+      <div class="subtitle">Advanced Multimodal Assistant</div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+    
+    <div id="status" class="status"></div>
+    
+    <!-- Voice Input Section -->
+    <div class="voice-section">
+      <button id="voiceBtn" class="voice-btn">
+        <span class="voice-icon" id="voiceIcon">🎤</span>
+        <span class="voice-text" id="voiceText">Voice Command</span>
+      </button>
+      <div class="voice-status" id="voiceStatus"></div>
+    </div>
+    
+    <div class="stats" id="stats" style="display: none;">
+      <div class="stat-item">
+        <span class="stat-number" id="hintsUsed">0</span>
+        <span class="stat-label">Hints</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-number" id="explanationsViewed">0</span>
+        <span class="stat-label">Explanations</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-number" id="problemsExplored">0</span>
+        <span class="stat-label">Problems</span>
+      </div>
+    </div>
+    
+    <div class="buttons">
+      <button id="hintBtn" class="btn btn-hint">
+        <span class="btn-icon">💡</span>
+        <div class="btn-text">
+          <div>Smart Hint</div>
+          <div class="btn-desc">Personalized guidance</div>
+        </div>
+      </button>
+      
+      <button id="explainBtn" class="btn btn-explain">
+        <span class="btn-icon">📋</span>
+        <div class="btn-text">
+          <div>Detailed Approach</div>
+          <div class="btn-desc">Complete solution strategy</div>
+        </div>
+      </button>
+      
+      <button id="analyzeBtn" class="btn btn-analyze">
+        <span class="btn-icon">🔧</span>
+        <div class="btn-text">
+          <div>Code Analysis</div>
+          <div class="btn-desc">Real-time code review</div>
+        </div>
+      </button>
+    </div>
+    
+    <div class="advanced-features">
+      <button id="screenshotBtn" class="btn-small btn-secondary">
+        📸 Smart Capture
+      </button>
+      <button id="codeExtractBtn" class="btn-small btn-secondary">
+        📝 Extract Code
+      </button>
+      <button id="settingsBtn" class="btn-small btn-secondary">
+        ⚙️ Settings
+      </button>
+      <button id="historyBtn" class="btn-small btn-secondary">
+        📊 History
+      </button>
+    </div>
+    
+    <!-- Real-time Code Monitor -->
+    <div class="code-monitor" id="codeMonitor" style="display: none;">
+      <div class="monitor-header">
+        <span>🔍 Code Monitor</span>
+        <button id="toggleMonitor" class="toggle-btn">●</button>
+      </div>
+      <div class="monitor-content" id="monitorContent">
+        Monitoring code changes...
+      </div>
+    </div>
+    
+    <div id="output" class="output"></div>
+    
+    <!-- Enhanced Settings Modal -->
+    <div id="settingsModal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>⚙️ Advanced Settings</h3>
+          <span class="close" id="closeSettings">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div class="setting-group">
+            <label>Hint Level:</label>
+            <select id="hintLevel">
+              <option value="subtle">Subtle</option>
+              <option value="medium" selected>Medium</option>
+              <option value="detailed">Detailed</option>
+            </select>
+          </div>
+          <div class="setting-group">
+            <label>Explanation Style:</label>
+            <select id="explanationStyle">
+              <option value="concise">Concise</option>
+              <option value="step-by-step" selected>Step-by-step</option>
+              <option value="detailed">Detailed</option>
+            </select>
+          </div>
+          <div class="setting-group">
+            <label>Voice Commands:</label>
+            <input type="checkbox" id="voiceEnabled" checked>
+            <span>Enable voice input</span>
+          </div>
+          <div class="setting-group">
+            <label>Code Monitoring:</label>
+            <input type="checkbox" id="codeMonitorEnabled" checked>
+            <span>Real-time code analysis</span>
+          </div>
+          <div class="setting-group">
+            <label>Auto-Screenshot:</label>
+            <input type="checkbox" id="autoScreenshot">
+            <span>Capture on problem change</span>
+          </div>
+          <div class="setting-group">
+            <button id="clearSession" class="btn-danger">Clear Session Data</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Voice Command Help Modal -->
+    <div id="voiceHelpModal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>🎤 Voice Commands</h3>
+          <span class="close" id="closeVoiceHelp">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div class="voice-commands">
+            <div class="command-item">
+              <strong>"Give me a hint"</strong> - Get problem hint
+            </div>
+            <div class="command-item">
+              <strong>"Explain the approach"</strong> - Get solution strategy
+            </div>
+            <div class="command-item">
+              <strong>"Analyze my code"</strong> - Review current code
+            </div>
+            <div class="command-item">
+              <strong>"Take a screenshot"</strong> - Capture screen
+            </div>
+            <div class="command-item">
+              <strong>"Open settings"</strong> - Access preferences
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="footer">
+      <span class="version">v1.1 Multimodal</span> • <span id="sessionInfo">Session Active</span>
+    </div>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
