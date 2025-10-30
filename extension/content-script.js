@@ -2,48 +2,198 @@
 if (typeof window.codeMentorAILoaded === 'undefined') {
   window.codeMentorAILoaded = true;
   
-  console.log('CodeMentor AI v1.1 - Enhanced Content Script Loaded');
+  console.log('CodeMentor AI v1.2 - Enhanced Content Script Loaded (LeetCode + NeetCode)');
 
   let lastCodeContent = '';
   let codeChangeTimer = null;
 
+  // Gemini Nano AI Integration
+  let aiSession = null;
+  let aiAvailable = false;
+
+  // Initialize AI in page context
+  async function initializeAI() {
+    try {
+      if ('ai' in window && 'languageModel' in window.ai) {
+        const capabilities = await window.ai.languageModel.capabilities();
+        if (capabilities.available === 'readily') {
+          aiSession = await window.ai.languageModel.create({
+            systemPrompt: "You are a helpful coding assistant for LeetCode and NeetCode problems.",
+            temperature: 0.7,
+            topK: 3
+          });
+          aiAvailable = true;
+          console.log('Gemini Nano initialized in content script');
+          return true;
+        }
+      }
+    } catch (error) {
+      console.log('AI initialization failed:', error);
+    }
+    aiAvailable = false;
+    return false;
+  }
+
+  // AI Prompt function
+  async function promptAI(message) {
+    if (!aiAvailable || !aiSession) {
+      // Try re-initializing if not yet available
+      await initializeAI();
+      if (!aiAvailable || !aiSession) {
+        return { error: 'AI not available or session could not be created.' };
+      }
+    }
+    try {
+      const response = await aiSession.prompt(message, { language: 'en' });
+      if (!response || typeof response !== 'string') {
+        throw new Error('API returned no result');
+      }
+      return response;
+    } catch (error) {
+      console.error('AI prompt error:', error);
+      // Attempt session recovery if possible
+      aiAvailable = false;
+      aiSession = null;
+      await initializeAI();
+      return { error: error && error.message ? error.message : 'Unknown Gemini Nano prompt error' };
+    }
+  }
+
+  // Initialize AI on load
+  initializeAI();
+
+  // Extract user's code from editor
+  function getUserCode() {
+    // Detect platform
+    const isNeetCode = window.location.hostname.includes('neetcode.io');
+    
+    if (isNeetCode) {
+      // NeetCode uses Monaco editor
+      const monacoTextarea = document.querySelector('.monaco-editor textarea');
+      if (monacoTextarea) {
+        return monacoTextarea.value || '';
+      }
+      
+      // Alternative NeetCode selectors
+      const neetCodeEditor = document.querySelector('[data-mode-id] textarea') ||
+                            document.querySelector('.editor-container textarea') ||
+                            document.querySelector('[class*="editor"] textarea');
+      if (neetCodeEditor) {
+        return neetCodeEditor.value || '';
+      }
+    } else {
+      // LeetCode detection (existing logic)
+      // Try Monaco editor (new LeetCode interface)
+      const monacoEditor = document.querySelector('.monaco-editor textarea');
+      if (monacoEditor) {
+        return monacoEditor.value || '';
+      }
+      
+      // Try CodeMirror editor
+      const codeMirror = document.querySelector('.CodeMirror');
+      if (codeMirror && codeMirror.CodeMirror) {
+        return codeMirror.CodeMirror.getValue() || '';
+      }
+    }
+    
+    // Universal fallback for both platforms
+    const textarea = document.querySelector('textarea[data-mode]') || 
+                    document.querySelector('textarea[class*="code"]') ||
+                    document.querySelector('#editor textarea') ||
+                    document.querySelector('textarea');
+    if (textarea) {
+      return textarea.value || '';
+    }
+    
+    return '';
+  }
+
   // Enhanced problem data extraction
   function extractEnhancedProblemData() {
     const data = {};
+    const isNeetCode = window.location.hostname.includes('neetcode.io');
     
-    // Extract title with multiple fallback methods
+    // Extract title with platform-specific logic
     let title = 'Problem title not found';
-    const urlMatch = window.location.pathname.match(/\/problems\/([^\/]+)/);
-    if (urlMatch) {
-      title = urlMatch[1].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    }
     
-    // Try DOM selectors as backup
-    const titleSelectors = ['h1', '[data-cy="question-title"]', 'div[class*="title"] span'];
-    for (const selector of titleSelectors) {
-      const element = document.querySelector(selector);
-      if (element && element.textContent.trim() && element.textContent.trim().length > 3) {
-        title = element.textContent.trim();
-        break;
+    if (isNeetCode) {
+      // NeetCode URL pattern: /problems/problem-name or /practice/problem-name
+      const urlMatch = window.location.pathname.match(/\/(problems|practice)\/([^\/]+)/);
+      if (urlMatch) {
+        title = urlMatch[2].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      }
+      
+      // NeetCode DOM selectors
+      const neetCodeTitleSelectors = [
+        'h1[class*="title"]',
+        '.problem-title',
+        '[data-testid="problem-title"]',
+        'h1'
+      ];
+      
+      for (const selector of neetCodeTitleSelectors) {
+        const element = document.querySelector(selector);
+        if (element && element.textContent.trim() && element.textContent.trim().length > 3) {
+          title = element.textContent.trim();
+          break;
+        }
+      }
+    } else {
+      // LeetCode logic (existing)
+      const urlMatch = window.location.pathname.match(/\/problems\/([^\/]+)/);
+      if (urlMatch) {
+        title = urlMatch[1].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      }
+      
+      // LeetCode DOM selectors
+      const titleSelectors = ['h1', '[data-cy="question-title"]', 'div[class*="title"] span'];
+      for (const selector of titleSelectors) {
+        const element = document.querySelector(selector);
+        if (element && element.textContent.trim() && element.textContent.trim().length > 3) {
+          title = element.textContent.trim();
+          break;
+        }
       }
     }
     data.title = title;
     
-    // Extract difficulty with enhanced detection
+    // Extract difficulty with platform-specific detection
     let difficulty = 'Medium';
-    const difficultySelectors = [
-      '[class*="difficulty"]',
-      'span[class*="Easy"], span[class*="Medium"], span[class*="Hard"]',
-      'div[class*="Easy"], div[class*="Medium"], div[class*="Hard"]'
-    ];
     
-    for (const selector of difficultySelectors) {
-      const element = document.querySelector(selector);
-      if (element) {
-        const text = element.textContent.trim();
-        if (['Easy', 'Medium', 'Hard'].includes(text)) {
-          difficulty = text;
-          break;
+    if (isNeetCode) {
+      // NeetCode difficulty selectors
+      const neetCodeDifficultySelectors = [
+        '[class*="difficulty"]',
+        '.badge',
+        '[data-testid="difficulty"]'
+      ];
+      
+      for (const selector of neetCodeDifficultySelectors) {
+        const element = document.querySelector(selector);
+        if (element) {
+          const text = element.textContent.trim();
+          if (['Easy', 'Medium', 'Hard'].includes(text)) {
+            difficulty = text;
+            break;
+          }
+        }
+      }
+    } else {
+      // LeetCode difficulty selectors (existing)
+      const difficultySelectors = [
+        '[class*="difficulty"]',
+        'span[class*="Easy"], span[class*="Medium"], span[class*="Hard"]',
+        'div[class*="Easy"], div[class*="Medium"], div[class*="Hard"]'
+      ];
+      
+      for (const selector of difficultySelectors) {
+        const element = document.querySelector(selector);
+        if (element) {
+          const text = element.textContent.trim();
+          if (['Easy', 'Medium', 'Hard'].includes(text)) {
+            difficulty = text;
+            break;
+          }
         }
       }
     }
@@ -213,7 +363,7 @@ if (typeof window.codeMentorAILoaded === 'undefined') {
   }
 
   // Message listener with enhanced capabilities
-  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     switch (request.action) {
       case 'ping':
         sendResponse({ status: 'ready' });
@@ -227,6 +377,22 @@ if (typeof window.codeMentorAILoaded === 'undefined') {
       case 'extractCode':
         const code = extractCodeFromEditor();
         sendResponse({ code, timestamp: new Date().toISOString() });
+        break;
+        
+      case 'getUserCode':
+        const userCode = getUserCode();
+        sendResponse({ code: userCode });
+        break;
+        
+      case 'initAI':
+        const available = await initializeAI();
+        sendResponse({ available });
+        break;
+        
+      case 'promptAI':
+        const result = await promptAI(request.message);
+        // Always return structured result with error if failed
+        sendResponse((typeof result === 'string') ? { result } : { error: result.error || 'Unknown error' });
         break;
         
       case 'processVoiceCommand':

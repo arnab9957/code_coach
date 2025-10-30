@@ -420,10 +420,10 @@ document.getElementById('hintBtn').addEventListener('click', async () => {
       action: 'generateHint',
       title: problemData.title
     });
-    showOutput(response);
+    showOutput(response && typeof response === 'string' ? response : (response && response.error ? `❌ AI Error: ${response.error}` : '❌ AI currently unavailable. Please reload the extension or check browser settings.'));
     await loadSessionData();
   } catch (error) {
-    showOutput('❌ Service temporarily unavailable. Please reload the extension.');
+    showOutput(`❌ AI error: ${error && error.message ? error.message : 'Service temporarily unavailable. Please reload the extension.'}`);
   } finally {
     btn.innerHTML = originalText;
     btn.disabled = false;
@@ -448,10 +448,10 @@ document.getElementById('explainBtn').addEventListener('click', async () => {
       action: 'explainApproach',
       title: problemData.title
     });
-    showOutput(response);
+    showOutput(response && typeof response === 'string' ? response : (response && response.error ? `❌ AI Error: ${response.error}` : '❌ AI currently unavailable. Please reload the extension or check browser settings.'));
     await loadSessionData();
   } catch (error) {
-    showOutput('❌ Service temporarily unavailable. Please reload the extension.');
+    showOutput(`❌ AI error: ${error && error.message ? error.message : 'Service temporarily unavailable. Please reload the extension.'}`);
   } finally {
     btn.innerHTML = originalText;
     btn.disabled = false;
@@ -464,30 +464,44 @@ document.getElementById('analyzeBtn').addEventListener('click', async () => {
     return;
   }
   
-  showOutput('🔍 Performing real-time code analysis...');
+  const btn = document.getElementById('analyzeBtn');
+  const originalText = btn.innerHTML;
+  btn.innerHTML = '<span class="btn-icon">⏳</span><div class="btn-text"><div class="loading">Analyzing your code</div></div>';
+  btn.disabled = true;
+  
+  showOutput('🔍 Extracting and analyzing your code...');
   
   try {
-    // Try to get fresh code from content script
+    // Get user's current code from editor
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    let codeToAnalyze = problemData.code;
+    let userCode = '';
     
     try {
-      const codeResponse = await chrome.tabs.sendMessage(tab.id, { action: 'extractCode' });
-      if (codeResponse.code) {
-        codeToAnalyze = codeResponse.code;
-      }
+      const codeResponse = await chrome.tabs.sendMessage(tab.id, { action: 'getUserCode' });
+      userCode = codeResponse.code || '';
     } catch (e) {
-      // Use existing code if extraction fails
+      console.log('Could not extract code:', e);
+    }
+    
+    // Fallback to cached problemData.code if extraction failed or returned placeholder
+    if (!userCode || userCode === 'No code found') {
+      if (problemData && problemData.code && problemData.code !== 'No code found') {
+        userCode = problemData.code;
+      }
     }
     
     const response = await chrome.runtime.sendMessage({
       action: 'analyzeCode',
       title: problemData.title,
-      code: codeToAnalyze
+      code: userCode
     });
-    showOutput(response);
+    showOutput(response && typeof response === 'string' ? response : (response && response.error ? `❌ AI Error: ${response.error}` : '❌ AI currently unavailable. Please reload the extension or check browser settings.'));
+    await loadSessionData();
   } catch (error) {
-    showOutput('❌ Code analysis temporarily unavailable.');
+    showOutput(`❌ AI error: ${error && error.message ? error.message : 'Service temporarily unavailable. Please try again.'}`);
+  } finally {
+    btn.innerHTML = originalText;
+    btn.disabled = false;
   }
 });
 
